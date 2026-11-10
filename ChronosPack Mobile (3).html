@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport adaptativo anti-zoom para navegadores móviles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>ChronosPack Mobile - Control Industrial por Lotes</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Ajustes base para asegurar proporciones y prevenir zoom táctil involuntario */
+        html {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+            font-size: 16px;
+            touch-action: manipulation;
+            background-color: #f8fafc;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc;
+            color: #0f172a;
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            transition: background-color 200ms ease-in-out;
+        }
+
+        .tabular-timer {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .pulse-subtle {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Destello verde clarito instantáneo al avanzar de paso */
+        .flash-green-active {
+            background-color: #dcfce7 !important; /* bg-emerald-100 */
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body id="appBody" class="font-sans antialiased selection:bg-emerald-600 selection:text-white">
+
+    <!-- CONTENEDOR PRINCIPAL MOBILE FLUIDO (100% ZOOM COMPATIBLE) -->
+    <div class="max-w-md sm:max-w-lg mx-auto min-h-screen flex flex-col bg-slate-50 shadow-md pb-36">
+
+        <!-- HEADER INDUSTRIAL SUPERIOR -->
+        <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-sm border-b border-slate-800">
+            <div class="px-3.5 h-14 flex items-center justify-between gap-2">
+                
+                <!-- Identificador del Sistema -->
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-sm shadow-sm">
+                        <i class="fa-solid fa-layer-group text-slate-950"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="font-black text-xs tracking-tight text-white leading-tight">CHRONOSPACK</h1>
+                            <span class="text-[9px] font-bold text-emerald-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 uppercase">Mobile</span>
+                        </div>
+                        <p class="text-[9px] text-slate-400 leading-none">Control por Lotes</p>
+                    </div>
+                </div>
+
+                <!-- Barra de Acciones Directas -->
+                <div class="flex items-center gap-1.5">
+                    <!-- Voz Micrófono (Muestra "Activo" al encender) -->
+                    <button id="voiceToggleBtn" title="Activar Reconocimiento por Voz" class="h-8 px-2 rounded-lg border border-slate-700 bg-slate-800 active:bg-slate-700 text-white text-[11px] font-bold flex items-center gap-1 transition">
+                        <span id="voiceDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                        <i id="voiceIcon" class="fa-solid fa-microphone-slash text-slate-400 text-xs"></i>
+                        <span id="voiceText">Voz</span>
+                    </button>
+
+                    <!-- Audio Anuncio de Pasos -->
+                    <button id="audioToggleBtn" title="Anuncio Auditivo de Pasos" class="h-8 px-2 rounded-lg border border-slate-700 bg-slate-800 active:bg-slate-700 text-white text-[11px] font-bold flex items-center gap-1 transition">
+                        <i id="audioIcon" class="fa-solid fa-volume-high text-emerald-400 text-xs"></i>
+                        <span id="audioText">Pasos</span>
+                    </button>
+
+                    <!-- Modo Enfoque / Pantalla Completa -->
+                    <button id="openFullscreenBtn" title="Modo Enfoque Taller" class="h-8 w-8 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold flex items-center justify-center transition shadow-sm">
+                        <i class="fa-solid fa-expand text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-1 px-3 py-3 space-y-3">
+
+            <!-- CONFIGURACIÓN DE LOTE (Campos y fuentes compactas) -->
+            <section class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm space-y-2">
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-tag text-emerald-600 text-[11px] shrink-0"></i>
+                        <span class="text-[11px] font-bold text-slate-700 w-10 shrink-0">Lote:</span>
+                        <input type="text" id="batchNameInputMobile" value="Lote Perfume 50ml" class="flex-1 bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-wine-bottle text-indigo-600 text-[11px] shrink-0"></i>
+                            <span class="text-[11px] font-bold text-slate-700 shrink-0">Bloque / Cantidad:</span>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <input type="number" id="batchUnitsInputMobile" min="1" max="10000" value="20" class="w-16 bg-slate-50 border border-slate-300 rounded-md px-1.5 py-1 text-center font-mono font-bold text-slate-900 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                            <span class="text-[11px] text-slate-500 font-medium">unids</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ESTADO Y BARRA DE PROGRESO -->
+            <section class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-2">
+                <div class="flex items-center justify-between gap-1 text-xs">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span id="batchTitleBadge" class="bg-slate-900 text-white font-bold px-2 py-0.5 rounded text-[10px] truncate max-w-[180px]">
+                            Lote Perfume 50ml (20 u.)
+                        </span>
+                        <span id="batchStepProgressText" class="bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded text-[10px]">
+                            Paso 1 de 5
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="text-[10px] text-slate-500 font-medium flex justify-between items-center">
+                    <span>Estado:</span>
+                    <strong id="batchStatusText" class="text-slate-900 font-bold">Pendiente de Inicio</strong>
+                </div>
+
+                <div class="w-full bg-slate-100 rounded border border-slate-200 h-2 overflow-hidden">
+                    <div id="batchProgressBar" class="bg-emerald-600 h-2 transition-all duration-300" style="width: 5%;"></div>
+                </div>
+            </section>
+
+            <!-- TARJETAS KPIS CUADRÍCULA 2x2 -->
+            <section class="grid grid-cols-2 gap-2">
+                <div class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Bloque</div>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                        <span id="metricBatchUnits" class="text-xl font-black text-slate-900 font-mono">20</span>
+                        <span class="text-[10px] text-slate-500 font-medium">frascos</span>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tiempo Acumulado</div>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                        <span id="metricTotalBatchTime" class="text-xl font-black text-emerald-700 font-mono tabular-timer">00:00</span>
+                        <span class="text-[10px] text-slate-500 font-medium">min</span>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Promed./Unidad</div>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                        <span id="metricAvgPerUnit" class="text-xl font-black text-indigo-700 font-mono tabular-timer">0.0s</span>
+                        <span class="text-[10px] text-slate-500 font-medium">/ frasco</span>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Incidencias</div>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                        <span id="metricIssuesCount" class="text-xl font-black text-amber-600 font-mono">0</span>
+                        <span class="text-[10px] text-slate-500 font-medium">reportes</span>
+                    </div>
+                    <p id="metricBottleneck" class="text-[8px] text-slate-400 mt-0.5 truncate">Sin fallas</p>
+                </div>
+            </section>
+
+            <!-- NAVEGACIÓN PESTAÑAS -->
+            <div class="border-b border-slate-200 flex items-center justify-between">
+                <nav class="flex space-x-2 w-full justify-between" aria-label="Tabs">
+                    <button id="tabBtnControl" class="tab-btn py-2 text-xs font-bold border-b-2 border-emerald-600 text-emerald-800 flex items-center gap-1">
+                        <i class="fa-solid fa-play text-[10px]"></i>
+                        <span>Ejecución Lote</span>
+                    </button>
+                    <button id="tabBtnSteps" class="tab-btn py-2 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-900 flex items-center gap-1">
+                        <i class="fa-solid fa-list-ol text-[10px]"></i>
+                        <span>Modificar Pasos</span>
+                    </button>
+                    <button id="tabBtnHistory" class="tab-btn py-2 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-900 flex items-center gap-1">
+                        <i class="fa-solid fa-table-list text-[10px]"></i>
+                        <span>Historial / Excel</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- TAB 1: EJECUCIÓN DEL LOTE -->
+            <div id="tabContentControl" class="space-y-3">
+                
+                <!-- CARD PRINCIPAL CRONÓMETRO -->
+                <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-2.5">
+                    
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <div id="activeStepNumber" class="w-6 h-6 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
+                                1
+                            </div>
+                            <div class="truncate">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Etapa Activa</p>
+                                <h3 id="activeStepTitle" class="text-xs font-bold text-slate-900 leading-tight truncate">Comprobar frascos</h3>
+                            </div>
+                        </div>
+
+                        <div id="timerStateBadge" class="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-200 text-[10px] font-bold bg-slate-50 text-slate-600 shrink-0">
+                            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                            <span>LISTO</span>
+                        </div>
+                    </div>
+
+                    <!-- CRONÓMETRO CENTRAL -->
+                    <div class="py-3 text-center bg-slate-50 border border-slate-100 rounded-xl">
+                        <div class="text-slate-400 text-[9px] uppercase tracking-widest font-bold mb-0.5">
+                            Tiempo de Paso (<span id="timerUnitsCountDisplay" class="text-slate-800 font-extrabold">20</span> u.)
+                        </div>
+                        <div id="stepTimerDisplay" class="text-4xl sm:text-5xl font-mono font-black text-slate-900 tracking-tight tabular-timer py-0.5">
+                            00:00.0
+                        </div>
+
+                        <!-- Métricas Secundarias en Tiempo Real -->
+                        <div class="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-xs px-1">
+                            <div class="bg-indigo-50 border border-indigo-200 text-indigo-900 font-semibold px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                <i class="fa-solid fa-calculator text-indigo-600 text-[9px]"></i>
+                                <span>Promed.: <strong id="liveUnitStepAvg" class="font-mono text-indigo-700 font-bold">0.0 s/frasco</strong></span>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 font-semibold px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                <i class="fa-solid fa-clock text-emerald-600 text-[9px]"></i>
+                                <span>Lote: <strong id="bottleTimerDisplay" class="font-mono text-emerald-700 font-bold">00:00.0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTÓN PRINCIPAL DENTRO DE TARJETA -->
+                    <button id="completeStepBtn" class="w-full py-3 px-3 text-xs sm:text-sm font-black text-white bg-emerald-600 active:bg-emerald-700 rounded-xl shadow transition border border-emerald-700 flex items-center justify-center gap-2 leading-tight text-center break-words">
+                        <i id="btnStepIcon" class="fa-solid fa-play"></i>
+                        <span id="btnStepText">INICIAR PROCESO (PASO 1)</span>
+                    </button>
+
+                    <!-- BOTONERA AUXILIAR INTEGRADA -->
+                    <div class="grid grid-cols-4 gap-1 text-[10px]">
+                        <button id="pauseBtn" class="py-2 px-1 bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg flex items-center justify-center gap-1">
+                            <i id="pauseIcon" class="fa-solid fa-pause text-slate-500"></i>
+                            <span id="pauseBtnText">Pausar</span>
+                        </button>
+                        
+                        <button id="reportIssueBtn" class="py-2 px-1 bg-amber-50 active:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                            <span>Falla</span>
+                        </button>
+
+                        <button id="resetStepBtn" class="py-2 px-1 bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-rotate-left text-slate-500"></i>
+                            <span>Reiniciar</span>
+                        </button>
+                        
+                        <button id="cancelBottleBtn" class="py-2 px-1 bg-slate-50 active:bg-rose-50 border border-slate-200 hover:border-rose-200 text-rose-700 font-bold rounded-lg flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-trash-can text-rose-500"></i>
+                            <span>Descartar</span>
+                        </button>
+                    </div>
+
+                    <!-- Indicación Operativa -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700">
+                        <div class="flex items-start gap-1.5">
+                            <i class="fa-solid fa-circle-info text-indigo-600 mt-0.5 text-xs shrink-0"></i>
+                            <div>
+                                <span class="font-bold text-slate-900 block text-[10px]">Indicación Operativa:</span>
+                                <span id="instructionText" class="text-[10px] text-slate-600 leading-tight">Instrucción del paso...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LISTA SECUENCIA OPERATIVA -->
+                <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <h2 class="font-bold text-slate-900 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check text-emerald-600"></i> Secuencia Operativa
+                        </h2>
+                        <span id="batchUnitsBadge" class="bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded font-bold">
+                            20 Frascos
+                        </span>
+                    </div>
+
+                    <div id="stepsContainer" class="space-y-1.5">
+                        <!-- Renderizado por JS -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: MODIFICAR PASOS (Entradas compactas) -->
+            <div id="tabContentSteps" class="hidden space-y-3">
+                <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                            <h2 class="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-ol text-emerald-600"></i> Etapas del Proceso
+                            </h2>
+                            <p class="text-[10px] text-slate-500">Personaliza la secuencia de fabricación.</p>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <button id="addNewStepBtn" class="px-2.5 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span>Agregar</span>
+                            </button>
+                            <button id="resetDefaultStepsBtn" class="px-2 py-1 bg-slate-50 text-slate-700 border border-slate-200 font-semibold rounded-lg text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="stepsEditorList" class="space-y-2">
+                        <!-- Lista Editable dinámicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: HISTORIAL / EXCEL -->
+            <div id="tabContentHistory" class="hidden space-y-3">
+                <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                            <h2 class="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                <i class="fa-solid fa-table-list text-emerald-600"></i> Registro de Lotes
+                            </h2>
+                            <p class="text-[10px] text-slate-500">Historial completo con desgloses.</p>
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                            <button id="exportExcelBtn" class="px-2.5 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-file-excel text-[10px]"></i>
+                                <span>Excel</span>
+                            </button>
+                            <button id="exportCsvBtn" class="px-2 py-1 bg-slate-50 border border-slate-200 text-slate-700 font-semibold rounded-lg text-xs">
+                                <span>CSV</span>
+                            </button>
+                            <button id="clearHistoryBtn" class="px-2 py-1 bg-slate-50 hover:bg-rose-50 border border-slate-200 text-rose-700 font-semibold rounded-lg text-xs">
+                                <i class="fa-solid fa-eraser text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-xs text-slate-700">
+                            <thead id="historyTableHeader" class="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200 text-[9px]">
+                                <!-- Dinámico -->
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-100 bg-white font-mono text-[10px]">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+
+                        <div id="emptyTableMsg" class="py-6 text-center text-slate-400">
+                            <i class="fa-solid fa-box-open text-xl mb-1 text-slate-300"></i>
+                            <p class="text-xs font-sans font-semibold text-slate-600">Sin lotes guardados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BOTONERA FIJA INFERIOR EN MÓVIL (Con elevación pb-7) -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 px-3 pt-2 pb-7 z-40 shadow-lg space-y-1.5 max-w-md sm:max-w-lg mx-auto">
+            <button id="mobileCompleteStepBtn" class="w-full py-3 px-3 text-xs sm:text-sm font-black text-white bg-emerald-600 active:bg-emerald-700 rounded-xl shadow-md transition border border-emerald-700 flex items-center justify-center gap-2 leading-tight text-center break-words">
+                <i id="mobileBtnStepIcon" class="fa-solid fa-play"></i>
+                <span id="mobileBtnStepText">INICIAR PROCESO (PASO 1)</span>
+            </button>
+
+            <div class="grid grid-cols-4 gap-1 text-[10px]">
+                <button id="mobilePauseBtn" class="py-1.5 px-1 bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-800 font-bold rounded-lg flex items-center justify-center gap-1">
+                    <i id="mobilePauseIcon" class="fa-solid fa-pause text-slate-600"></i>
+                    <span id="mobilePauseBtnText">Pausa</span>
+                </button>
+
+                <button id="mobileReportIssueBtn" class="py-1.5 px-1 bg-amber-50 active:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                    <span>Falla</span>
+                </button>
+
+                <button id="mobileResetStepBtn" class="py-1.5 px-1 bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-800 font-bold rounded-lg flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-rotate-left text-slate-600"></i>
+                    <span>Reiniciar</span>
+                </button>
+
+                <button id="mobileCancelBottleBtn" class="py-1.5 px-1 bg-rose-50 active:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-lg flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-trash-can text-rose-500"></i>
+                    <span>Borrar</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PANTALLA COMPLETA / MODO ENFOQUE (FONDO CLARO + BOTONES ELEVADOS + DESTELLO VERDE) -->
+    <div id="fullscreenOverlay" class="fixed inset-0 bg-slate-50 text-slate-900 z-50 hidden flex flex-col justify-between p-3.5 select-none h-[100dvh] max-h-[100dvh] overflow-hidden max-w-md sm:max-w-lg mx-auto transition-colors duration-200">
+        
+        <!-- Header superior Enfoque Claro -->
+        <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5 w-full shrink-0">
+            <div class="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                <span id="fsBatchBadge" class="bg-slate-900 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded truncate max-w-[180px]">
+                    LOTE: Perfume 50ml (20 U.)
+                </span>
+                <span id="fsTimerStateBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-700 border border-slate-200 flex items-center gap-1 shrink-0">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span>LISTO</span>
+                </span>
+            </div>
+
+            <button id="closeFullscreenBtn" class="px-2.5 py-1 bg-white active:bg-slate-100 text-slate-800 rounded-lg font-bold text-xs border border-slate-300 shrink-0 flex items-center gap-1 shadow-sm">
+                <i class="fa-solid fa-compress text-slate-600 text-xs"></i>
+                <span>Salir</span>
+            </button>
+        </div>
+
+        <!-- Zona central Enfoque Claro -->
+        <div class="my-auto py-2 flex flex-col items-center justify-center text-center space-y-3 w-full overflow-hidden">
+            
+            <div class="inline-flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm max-w-full">
+                <span id="fsStepNum" class="w-5 h-5 bg-slate-900 text-white font-black text-xs flex items-center justify-center rounded shrink-0">1</span>
+                <span id="fsStepTitle" class="text-xs sm:text-sm font-extrabold text-slate-900 truncate">Comprobar frascos</span>
+            </div>
+
+            <!-- RELOJ GIGANTE MODO ENFOQUE -->
+            <div id="fsStepTimerDisplay" class="text-5xl sm:text-6xl md:text-7xl font-mono font-black text-slate-900 tracking-tight leading-none tabular-timer py-1">
+                00:00.0
+            </div>
+
+            <div class="space-y-1 text-xs shrink-0">
+                <div class="inline-block bg-indigo-50 border border-indigo-200 text-indigo-900 px-2.5 py-0.5 rounded font-bold text-xs">
+                    Promedio: <strong id="fsLiveUnitStepAvg" class="font-mono text-indigo-700 font-extrabold">0.0 s/u</strong>
+                </div>
+                <div class="text-slate-500 font-medium text-[11px] pt-0.5 truncate max-w-[280px] mx-auto">
+                    Siguiente: <strong id="fsNextStepTitle" class="text-slate-800 font-bold">Llenar concentrado</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zona inferior Enfoque: Botones elevados (pb-8) -->
+        <div class="space-y-2 w-full pt-1 pb-8 shrink-0">
+            
+            <!-- Botón Principal Enfoque Claro -->
+            <button id="fsCompleteStepBtn" class="w-full py-3.5 px-3 text-xs sm:text-sm font-black text-white bg-emerald-600 active:bg-emerald-700 rounded-xl shadow-md transition border border-emerald-700 flex items-center justify-center gap-2 leading-tight text-center break-words min-h-[50px]">
+                <i id="fsBtnIcon" class="fa-solid fa-play"></i>
+                <span id="fsBtnText">INICIAR PROCESO (PASO 1)</span>
+            </button>
+
+            <!-- Fila de Botones Auxiliares -->
+            <div class="grid grid-cols-3 gap-1.5 text-xs">
+                <button id="fsPauseBtn" class="py-2 px-1 bg-white active:bg-slate-100 border border-slate-200 text-slate-800 font-bold rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                    <i id="fsPauseIcon" class="fa-solid fa-pause text-slate-600"></i>
+                    <span id="fsPauseBtnText" class="truncate text-[11px]">Pausar</span>
+                </button>
+
+                <button id="fsReportIssueBtn" class="py-2 px-1 bg-amber-50 active:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                    <span class="truncate text-[11px]">Falla</span>
+                </button>
+
+                <button id="fsResetBtn" class="py-2 px-1 bg-white active:bg-slate-100 border border-slate-200 text-slate-800 font-bold rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                    <i class="fa-solid fa-rotate-left text-slate-600"></i>
+                    <span class="truncate text-[11px]">Reiniciar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRO DE INCIDENCIAS -->
+    <div id="issueModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+        <div class="bg-white border border-slate-200 rounded-xl max-w-xs w-full p-4 shadow-xl space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div class="flex items-center gap-2 text-amber-600">
+                    <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                    <h3 class="font-bold text-xs text-slate-900">Registrar Inconveniente</h3>
+                </div>
+                <button id="closeIssueModalBtn" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-[11px] text-slate-500">
+                Detalle para <strong id="issueStepLabel" class="text-slate-800">Paso 1</strong>:
+            </p>
+
+            <div class="flex flex-wrap gap-1 text-[10px]">
+                <button type="button" onclick="setQuickIssue('Válvula defectuosa / encallada')" class="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-1 rounded font-medium">Válvula defectuosa</button>
+                <button type="button" onclick="setQuickIssue('Frasco roto o fisurado')" class="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-1 rounded font-medium">Frasco roto</button>
+                <button type="button" onclick="setQuickIssue('Derrame de líquido')" class="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-1 rounded font-medium">Derrame</button>
+                <button type="button" onclick="setQuickIssue('Falta de insumo')" class="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-1 rounded font-medium">Falta insumo</button>
+            </div>
+
+            <textarea id="issueTextInput" rows="2" placeholder="Descripción breve..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:ring-1 focus:ring-amber-500 focus:outline-none"></textarea>
+
+            <div class="flex items-center justify-end gap-2 pt-1">
+                <button id="cancelIssueBtn" class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">
+                    Cancelar
+                </button>
+                <button id="saveIssueBtn" class="px-3.5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold shadow-sm">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SESIÓN DUPLICADA -->
+    <div id="duplicateTabModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-xl max-w-xs w-full p-4 shadow-2xl space-y-3 text-center">
+            <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mx-auto text-lg">
+                <i class="fa-solid fa-window-restore"></i>
+            </div>
+            <h3 class="font-bold text-sm text-slate-900">Sesión Duplicada</h3>
+            <p class="text-xs text-slate-600">
+                Existe otra pestaña abierta con ChronosPack.
+            </p>
+            <button id="claimTabControlBtn" class="w-full py-2 bg-emerald-600 text-white font-bold rounded-lg text-xs">
+                Asignar Control a Esta Pestaña
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMACIÓN CUSTOM -->
+    <div id="customModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-xl max-w-xs w-full p-4 shadow-xl space-y-3">
+            <div class="flex items-center gap-2 text-amber-600">
+                <i id="modalIcon" class="fa-solid fa-triangle-exclamation text-lg"></i>
+                <h3 id="modalTitle" class="font-bold text-sm text-slate-900">Confirmación</h3>
+            </div>
+            <p id="modalMessage" class="text-xs text-slate-600 leading-relaxed">
+                ¿Está seguro de realizar esta acción?
+            </p>
+            <div class="flex items-center justify-end gap-2 pt-1">
+                <button id="modalCancelBtn" class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">
+                    Cancelar
+                </button>
+                <button id="modalConfirmBtn" class="px-3.5 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-28 right-3 left-3 z-50 space-y-2 pointer-events-none max-w-md mx-auto"></div>
+
+    <!-- LÓGICA JAVASCRIPT CON BASE DE DATOS SEMILLA INTERNA -->
+    <script>
+        // Secuencia por defecto de Perfumería
+        const DEFAULT_STEPS = [
+            { id: 1, name: "Comprobar frascos", instruction: "Verificar la limpieza, ausencia de fisuras o residuos en los frascos del lote." },
+            { id: 2, name: "Llenar con concentrado aromático", instruction: "Dosificar la esencia/concentrado aromático en cada frasco." },
+            { id: 3, name: "Llenar con alcohol de perfumería", instruction: "Adicionar el alcohol desnaturalizado hasta el nivel de aforo en todos los frascos." },
+            { id: 4, name: "Inspección visual (turbidez/residuos)", instruction: "Inspeccionar a trasluz para verificar nitidez y ausencia de turbidez o sedimentos." },
+            { id: 5, name: "Colocar y ajustar válvula", instruction: "Insertar el pescante y presionar/ajustar herméticamente la válvula atomizadora." }
+        ];
+
+        // BASE DE DATOS SEMILLA INTERNA (Pre-cargada en el código)
+        // Al compartir la web o abrirla en un navegador nuevo, estos datos aparecerán en la tabla por defecto.
+        const SEED_HISTORY = [
+            {
+                id: 1700000000001,
+                batchNum: 1,
+                batchName: "Lote Perfume 50ml",
+                units: 20,
+                stepTimes: [45.2, 82.0, 95.5, 38.0, 64.1],
+                unitStepTimes: [2.26, 4.10, 4.78, 1.90, 3.21],
+                stepNames: [
+                    "Comprobar frascos",
+                    "Llenar con concentrado aromático",
+                    "Llenar con alcohol de perfumería",
+                    "Inspección visual (turbidez/residuos)",
+                    "Colocar y ajustar válvula"
+                ],
+                totalBatchSeconds: 324.8,
+                avgSecPerUnit: 16.24,
+                bottleneck: "Llenar con alcohol de perfumería",
+                issues: [
+                    { stepIndex: 3, stepName: "Llenar con alcohol de perfumería", text: "Espuma leve en llenado", timestamp: "10:15", timeMs: 45000 }
+                ],
+                timestamp: "10/11/2026 10:15:00"
+            },
+            {
+                id: 1700000000002,
+                batchNum: 2,
+                batchName: "Lote Narciss Morphosis 50ml",
+                units: 15,
+                stepTimes: [32.0, 65.5, 71.0, 28.4, 48.0],
+                unitStepTimes: [2.13, 4.37, 4.73, 1.89, 3.20],
+                stepNames: [
+                    "Comprobar frascos",
+                    "Llenar con concentrado aromático",
+                    "Llenar con alcohol de perfumería",
+                    "Inspección visual (turbidez/residuos)",
+                    "Colocar y ajustar válvula"
+                ],
+                totalBatchSeconds: 244.9,
+                avgSecPerUnit: 16.33,
+                bottleneck: "Llenar con alcohol de perfumería",
+                issues: [],
+                timestamp: "10/11/2026 11:30:00"
+            }
+        ];
+
+        // Variables de Estado General
+        let steps = [];
+        let batchName = "Lote Perfume 50ml";
+        let batchUnits = 20;
+        let historyData = [];
+        let batchCountNum = 1;
+        let currentStepIndex = 0;
+
+        let stepState = 'idle'; // 'idle', 'running', 'paused'
+
+        let isRunning = false;
+        let isPaused = false;
+        let soundEnabled = true;
+        let ttsEnabled = true;
+
+        let stepStartTime = 0;
+        let stepElapsedTime = 0;
+        let batchStartTime = 0;
+        let batchElapsedTime = 0;
+        let timerInterval = null;
+
+        let currentBatchStepTimes = [];
+        let currentBatchIssues = [];
+
+        let recognition = null;
+        let voiceActive = false;
+
+        let tabChannel = null;
+        const currentTabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+
+        let audioCtx = null;
+
+        // Caché DOM
+        const appBody = document.getElementById('appBody');
+        const batchNameInputMobile = document.getElementById('batchNameInputMobile');
+        const batchUnitsInputMobile = document.getElementById('batchUnitsInputMobile');
+
+        const batchTitleBadge = document.getElementById('batchTitleBadge');
+        const batchStepProgressText = document.getElementById('batchStepProgressText');
+        const batchProgressBar = document.getElementById('batchProgressBar');
+        const batchStatusText = document.getElementById('batchStatusText');
+
+        const metricBatchUnits = document.getElementById('metricBatchUnits');
+        const metricTotalBatchTime = document.getElementById('metricTotalBatchTime');
+        const metricAvgPerUnit = document.getElementById('metricAvgPerUnit');
+        const metricIssuesCount = document.getElementById('metricIssuesCount');
+        const metricBottleneck = document.getElementById('metricBottleneck');
+
+        const stepsContainer = document.getElementById('stepsContainer');
+        const activeStepNumber = document.getElementById('activeStepNumber');
+        const activeStepTitle = document.getElementById('activeStepTitle');
+        const instructionText = document.getElementById('instructionText');
+        const batchUnitsBadge = document.getElementById('batchUnitsBadge');
+
+        const timerUnitsCountDisplay = document.getElementById('timerUnitsCountDisplay');
+        const stepTimerDisplay = document.getElementById('stepTimerDisplay');
+        const bottleTimerDisplay = document.getElementById('bottleTimerDisplay');
+        const liveUnitStepAvg = document.getElementById('liveUnitStepAvg');
+        const timerStateBadge = document.getElementById('timerStateBadge');
+
+        const completeStepBtn = document.getElementById('completeStepBtn');
+        const btnStepIcon = document.getElementById('btnStepIcon');
+        const btnStepText = document.getElementById('btnStepText');
+
+        const mobileCompleteStepBtn = document.getElementById('mobileCompleteStepBtn');
+        const mobileBtnStepIcon = document.getElementById('mobileBtnStepIcon');
+        const mobileBtnStepText = document.getElementById('mobileBtnStepText');
+
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseBtnText = document.getElementById('pauseBtnText');
+        
+        const mobilePauseBtn = document.getElementById('mobilePauseBtn');
+        const mobilePauseIcon = document.getElementById('mobilePauseIcon');
+        const mobilePauseBtnText = document.getElementById('mobilePauseBtnText');
+
+        const resetStepBtn = document.getElementById('resetStepBtn');
+        const mobileResetStepBtn = document.getElementById('mobileResetStepBtn');
+        const cancelBottleBtn = document.getElementById('cancelBottleBtn');
+        const mobileCancelBottleBtn = document.getElementById('mobileCancelBottleBtn');
+        const reportIssueBtn = document.getElementById('reportIssueBtn');
+        const mobileReportIssueBtn = document.getElementById('mobileReportIssueBtn');
+
+        const historyTableHeader = document.getElementById('historyTableHeader');
+        const historyTableBody = document.getElementById('historyTableBody');
+        const emptyTableMsg = document.getElementById('emptyTableMsg');
+
+        // Elementos Modo Enfoque Claro
+        const fullscreenOverlay = document.getElementById('fullscreenOverlay');
+        const fsBatchBadge = document.getElementById('fsBatchBadge');
+        const fsTimerStateBadge = document.getElementById('fsTimerStateBadge');
+        const fsStepNum = document.getElementById('fsStepNum');
+        const fsStepTitle = document.getElementById('fsStepTitle');
+        const fsStepTimerDisplay = document.getElementById('fsStepTimerDisplay');
+        const fsLiveUnitStepAvg = document.getElementById('fsLiveUnitStepAvg');
+        const fsNextStepTitle = document.getElementById('fsNextStepTitle');
+        const fsCompleteStepBtn = document.getElementById('fsCompleteStepBtn');
+        const fsBtnText = document.getElementById('fsBtnText');
+        const fsBtnIcon = document.getElementById('fsBtnIcon');
+
+        const fsPauseBtn = document.getElementById('fsPauseBtn');
+        const fsPauseIcon = document.getElementById('fsPauseIcon');
+        const fsPauseBtnText = document.getElementById('fsPauseBtnText');
+        const fsReportIssueBtn = document.getElementById('fsReportIssueBtn');
+        const fsResetBtn = document.getElementById('fsResetBtn');
+
+        // Voz y Sonido
+        const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+        const voiceDot = document.getElementById('voiceDot');
+        const voiceIcon = document.getElementById('voiceIcon');
+        const voiceText = document.getElementById('voiceText');
+
+        const audioToggleBtn = document.getElementById('audioToggleBtn');
+        const audioIcon = document.getElementById('audioIcon');
+        const audioText = document.getElementById('audioText');
+
+        const issueModal = document.getElementById('issueModal');
+        const issueStepLabel = document.getElementById('issueStepLabel');
+        const issueTextInput = document.getElementById('issueTextInput');
+
+        // Inicialización de la aplicación
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            currentBatchStepTimes = new Array(steps.length).fill(0);
+            syncBatchInputsUI();
+            setupSingleTabProtection();
+            setupVoiceRecognition();
+            renderStepper();
+            updateStepUI();
+            updateMetricsAndBatch();
+            renderHistoryTable();
+            renderStepsEditor();
+            setupTabNavigation();
+            setupEventListeners();
+        });
+
+        function saveState() {
+            try {
+                localStorage.setItem('chronos_batch_steps', JSON.stringify(steps));
+                localStorage.setItem('chronos_batch_name', batchName);
+                localStorage.setItem('chronos_batch_units', batchUnits.toString());
+                localStorage.setItem('chronos_batch_history', JSON.stringify(historyData));
+            } catch (e) {}
+        }
+
+        function loadState() {
+            try {
+                const savedSteps = localStorage.getItem('chronos_batch_steps');
+                const savedName = localStorage.getItem('chronos_batch_name');
+                const savedUnits = localStorage.getItem('chronos_batch_units');
+                const savedHistory = localStorage.getItem('chronos_batch_history');
+
+                steps = savedSteps ? JSON.parse(savedSteps) : JSON.parse(JSON.stringify(DEFAULT_STEPS));
+                batchName = savedName || "Lote Perfume 50ml";
+                batchUnits = savedUnits ? Math.max(1, parseInt(savedUnits, 10)) : 20;
+                
+                // Si no existe historial en localStorage, se inicializa con la Base de Datos Semilla
+                if (savedHistory) {
+                    historyData = JSON.parse(savedHistory);
+                } else {
+                    historyData = JSON.parse(JSON.stringify(SEED_HISTORY));
+                    localStorage.setItem('chronos_batch_history', JSON.stringify(historyData));
+                }
+
+                batchCountNum = historyData.length + 1;
+            } catch (e) {
+                steps = JSON.parse(JSON.stringify(DEFAULT_STEPS));
+                batchName = "Lote Perfume 50ml";
+                batchUnits = 20;
+                historyData = JSON.parse(JSON.stringify(SEED_HISTORY));
+            }
+        }
+
+        // EFECTO DE DESTELLO EN VERDE CLARITO (~300ms) AL PASAR DE ETAPA
+        function triggerStepFlash() {
+            appBody.classList.add('flash-green-active');
+            fullscreenOverlay.classList.add('flash-green-active');
+
+            setTimeout(() => {
+                appBody.classList.remove('flash-green-active');
+                fullscreenOverlay.classList.remove('flash-green-active');
+            }, 300);
+        }
+
+        function setupSingleTabProtection() {
+            if ('BroadcastChannel' in window) {
+                tabChannel = new BroadcastChannel('chronospack_single_tab');
+                tabChannel.postMessage({ type: 'PING_ACTIVE', tabId: currentTabId });
+
+                tabChannel.onmessage = (event) => {
+                    const data = event.data;
+                    if (data.type === 'PING_ACTIVE') {
+                        tabChannel.postMessage({ type: 'PONG_ACTIVE', tabId: currentTabId });
+                    } else if (data.type === 'PONG_ACTIVE' && data.tabId !== currentTabId) {
+                        document.getElementById('duplicateTabModal').classList.remove('hidden');
+                    }
+                };
+
+                document.getElementById('claimTabControlBtn').addEventListener('click', () => {
+                    tabChannel.postMessage({ type: 'CLAIM_CONTROL', tabId: currentTabId });
+                    document.getElementById('duplicateTabModal').classList.add('hidden');
+                    showToast("Control asignado a esta pestaña", "success");
+                });
+            }
+        }
+
+        function syncBatchInputsUI() {
+            batchNameInputMobile.value = batchName;
+            batchUnitsInputMobile.value = batchUnits;
+            
+            metricBatchUnits.textContent = batchUnits;
+            timerUnitsCountDisplay.textContent = batchUnits;
+            batchUnitsBadge.textContent = `${batchUnits} Frascos`;
+            batchTitleBadge.textContent = `${batchName} (${batchUnits} u.)`;
+        }
+
+        function renderStepper() {
+            stepsContainer.innerHTML = '';
+            steps.forEach((step, idx) => {
+                const isCurrent = idx === currentStepIndex;
+                const isDone = idx < currentStepIndex;
+
+                let borderClass = 'border-slate-200 bg-white text-slate-500';
+                let iconClass = 'bg-slate-100 text-slate-500 font-semibold';
+
+                if (isCurrent) {
+                    borderClass = 'border-emerald-400 bg-emerald-50/70 text-slate-900 shadow-sm';
+                    iconClass = 'bg-emerald-600 text-white font-black';
+                } else if (isDone) {
+                    borderClass = 'border-slate-200 bg-slate-50 text-slate-700';
+                    iconClass = 'bg-slate-800 text-white font-bold';
+                }
+
+                const totalStepSec = currentBatchStepTimes[idx] || 0;
+                const unitStepSec = batchUnits > 0 ? (totalStepSec / batchUnits) : 0;
+
+                const stepEl = document.createElement('div');
+                stepEl.className = `flex items-center justify-between p-2 rounded-lg border ${borderClass} transition-all`;
+                stepEl.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <div class="w-5 h-5 rounded ${iconClass} flex items-center justify-center text-[10px] shrink-0 font-mono">
+                            ${isDone ? '<i class="fa-solid fa-check"></i>' : (idx + 1)}
+                        </div>
+                        <div class="truncate">
+                            <div class="font-bold text-xs leading-tight truncate">${escapeHtml(step.name)}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">
+                                ${isDone ? `Total: ${totalStepSec.toFixed(1)}s (${unitStepSec.toFixed(1)}s/u)` : (isCurrent ? (stepState === 'running' ? 'Medición...' : 'Listo') : 'En espera')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                stepsContainer.appendChild(stepEl);
+            });
+        }
+
+        function updateStepUI() {
+            if (steps.length === 0) return;
+            const currentStep = steps[currentStepIndex];
+            
+            activeStepNumber.textContent = currentStepIndex + 1;
+            activeStepTitle.textContent = currentStep.name;
+            instructionText.textContent = currentStep.instruction || "Sin instrucción específica.";
+
+            const isLast = currentStepIndex === steps.length - 1;
+
+            let btnTextStr = "";
+            let btnIconStr = "";
+
+            if (stepState === 'idle') {
+                btnTextStr = currentStepIndex === 0 ? `INICIAR PROCESO (PASO 1)` : `INICIAR PASO ${currentStepIndex + 1}`;
+                btnIconStr = "fa-solid fa-play";
+            } else {
+                if (isLast) {
+                    btnTextStr = `FINALIZAR LOTE (${batchUnits} U.)`;
+                    btnIconStr = "fa-solid fa-flag-checkered";
+                } else {
+                    btnTextStr = `COMPLETAR PASO ${currentStepIndex + 1}`;
+                    btnIconStr = "fa-solid fa-check-double";
+                }
+            }
+
+            btnStepText.textContent = btnTextStr;
+            btnStepIcon.className = btnIconStr;
+            mobileBtnStepText.textContent = btnTextStr;
+            mobileBtnStepIcon.className = btnIconStr;
+            fsBtnText.textContent = btnTextStr;
+            fsBtnIcon.className = btnIconStr;
+
+            fsNextStepTitle.textContent = isLast ? "Fin de Lote" : (steps[currentStepIndex + 1]?.name || "");
+
+            const stepPercent = Math.round(((currentStepIndex) / steps.length) * 100);
+            batchProgressBar.style.width = `${Math.max(5, stepPercent)}%`;
+            batchStepProgressText.textContent = `Paso ${currentStepIndex + 1} de ${steps.length}`;
+
+            fsStepNum.textContent = currentStepIndex + 1;
+            fsStepTitle.textContent = `${currentStep.name} (${batchUnits} u.)`;
+            fsBatchBadge.textContent = `LOTE: ${batchName} (${batchUnits} U.)`;
+
+            renderStepper();
+        }
+
+        function speakStepAnnouncement(stepNum, stepName) {
+            if (!ttsEnabled || !('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const text = `Paso ${stepNum}: ${stepName}`;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {}
+        }
+
+        function handleMainButtonClick() {
+            initAudio();
+            if (stepState === 'idle') {
+                startTimer();
+                stepState = 'running';
+                updateStepUI();
+                speakStepAnnouncement(currentStepIndex + 1, steps[currentStepIndex].name);
+                showToast(`Iniciado Paso ${currentStepIndex + 1}`, "info");
+            } else {
+                triggerStepFlash(); // Activación del destello verde al avanzar
+                advanceStep();
+            }
+        }
+
+        function startTimer() {
+            if (!isRunning) {
+                const now = Date.now();
+                stepStartTime = now - stepElapsedTime;
+                if (currentStepIndex === 0 && batchElapsedTime === 0) {
+                    batchStartTime = now;
+                } else {
+                    batchStartTime = now - batchElapsedTime;
+                }
+
+                isRunning = true;
+                isPaused = false;
+                stepState = 'running';
+                timerInterval = setInterval(updateTimerDisplay, 50);
+                updateTimerStateUI();
+            }
+        }
+
+        function pauseTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                isPaused = true;
+                stepState = 'paused';
+                updateTimerStateUI();
+                playTone(300, 0.1, 'triangle');
+            }
+        }
+
+        function resumeTimer() {
+            if (isPaused) {
+                startTimer();
+                playTone(600, 0.1, 'sine');
+            }
+        }
+
+        function togglePause() {
+            if (stepState === 'idle') {
+                showToast("Presiona INICIAR para comenzar", "warning");
+                return;
+            }
+            if (isRunning) pauseTimer();
+            else if (isPaused) resumeTimer();
+        }
+
+        function updateTimerDisplay() {
+            const now = Date.now();
+            stepElapsedTime = now - stepStartTime;
+            batchElapsedTime = now - batchStartTime;
+
+            const stepFormatted = formatTime(stepElapsedTime);
+            const batchFormatted = formatTime(batchElapsedTime);
+
+            stepTimerDisplay.textContent = stepFormatted;
+            bottleTimerDisplay.textContent = batchFormatted;
+            fsStepTimerDisplay.textContent = stepFormatted;
+
+            const currentStepSec = stepElapsedTime / 1000;
+            const liveAvg = batchUnits > 0 ? (currentStepSec / batchUnits) : 0;
+            const liveAvgStr = `${liveAvg.toFixed(1)} s/frasco`;
+            liveUnitStepAvg.textContent = liveAvgStr;
+            fsLiveUnitStepAvg.textContent = liveAvgStr;
+
+            metricTotalBatchTime.textContent = formatTimeMinSec(batchElapsedTime);
+            const totalBatchSec = batchElapsedTime / 1000;
+            const totalAvgUnit = batchUnits > 0 ? (totalBatchSec / batchUnits) : 0;
+            metricAvgPerUnit.textContent = `${totalAvgUnit.toFixed(1)}s`;
+        }
+
+        function formatTime(ms) {
+            const totalDecis = Math.floor(ms / 100);
+            const decis = totalDecis % 10;
+            const totalSeconds = Math.floor(ms / 1000);
+            const seconds = totalSeconds % 60;
+            const minutes = Math.floor(totalSeconds / 60);
+
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${decis}`;
+        }
+
+        function formatTimeMinSec(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const seconds = totalSeconds % 60;
+            const minutes = Math.floor(totalSeconds / 60);
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function formatSecondsShort(sec) {
+            if (isNaN(sec) || sec === null || sec === undefined) return "--";
+            if (sec < 60) return `${sec.toFixed(1)}s`;
+            const m = Math.floor(sec / 60);
+            const s = (sec % 60).toFixed(1);
+            return `${m}m ${s}s`;
+        }
+
+        function updateTimerStateUI() {
+            let badgeHtml = '';
+            let badgeClass = '';
+
+            if (isRunning) {
+                badgeHtml = `<span class="w-2 h-2 rounded-full bg-emerald-500 pulse-subtle"></span><span>EN CURSO</span>`;
+                badgeClass = "flex items-center gap-1 px-2 py-0.5 rounded border border-emerald-200 text-[10px] font-bold bg-emerald-50 text-emerald-700";
+                
+                pauseBtnText.textContent = "Pausar";
+                mobilePauseBtnText.textContent = "Pausa";
+                fsPauseBtnText.textContent = "Pausar";
+                pauseIcon.className = "fa-solid fa-pause text-slate-500";
+                mobilePauseIcon.className = "fa-solid fa-pause text-slate-600";
+                fsPauseIcon.className = "fa-solid fa-pause text-slate-600";
+                batchStatusText.textContent = "Ejecutando Paso";
+            } else if (isPaused) {
+                badgeHtml = `<span class="w-2 h-2 rounded-full bg-amber-500"></span><span>PAUSADO</span>`;
+                badgeClass = "flex items-center gap-1 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-bold bg-amber-50 text-amber-700";
+                
+                pauseBtnText.textContent = "Reanudar";
+                mobilePauseBtnText.textContent = "Reanudar";
+                fsPauseBtnText.textContent = "Reanudar";
+                pauseIcon.className = "fa-solid fa-play text-emerald-600";
+                mobilePauseIcon.className = "fa-solid fa-play text-emerald-600";
+                fsPauseIcon.className = "fa-solid fa-play text-emerald-600";
+                batchStatusText.textContent = "Pausado";
+            } else {
+                badgeHtml = `<span class="w-2 h-2 rounded-full bg-slate-400"></span><span>LISTO</span>`;
+                badgeClass = "flex items-center gap-1 px-2 py-0.5 rounded border border-slate-200 text-[10px] font-bold bg-slate-50 text-slate-600";
+                batchStatusText.textContent = "Pendiente de Inicio";
+            }
+
+            timerStateBadge.className = badgeClass;
+            timerStateBadge.innerHTML = badgeHtml;
+            fsTimerStateBadge.className = badgeClass;
+            fsTimerStateBadge.innerHTML = badgeHtml;
+        }
+
+        function advanceStep() {
+            if (steps.length === 0) return;
+            playStepChimeSound();
+
+            const stepSeconds = stepElapsedTime / 1000;
+            currentBatchStepTimes[currentStepIndex] = stepSeconds;
+
+            if (currentStepIndex < steps.length - 1) {
+                currentStepIndex++;
+                stepElapsedTime = 0;
+                stepStartTime = Date.now();
+                stepState = 'running';
+                updateStepUI();
+                speakStepAnnouncement(currentStepIndex + 1, steps[currentStepIndex].name);
+
+                if (!isRunning && !isPaused) {
+                    startTimer();
+                }
+            } else {
+                finishBatch();
+            }
+        }
+
+        function finishBatch() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isPaused = false;
+            stepState = 'idle';
+
+            const totalBatchSec = currentBatchStepTimes.reduce((a, b) => a + b, 0);
+            const avgSecPerUnit = batchUnits > 0 ? (totalBatchSec / batchUnits) : 0;
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = new Date().toLocaleDateString();
+
+            let maxStepVal = -1;
+            let maxStepName = "Ninguno";
+            currentBatchStepTimes.forEach((t, i) => {
+                if (t > maxStepVal) {
+                    maxStepVal = t;
+                    maxStepName = steps[i] ? steps[i].name : `Paso ${i + 1}`;
+                }
+            });
+
+            const batchRecord = {
+                id: Date.now(),
+                batchNum: batchCountNum,
+                batchName: batchName,
+                units: batchUnits,
+                stepTimes: [...currentBatchStepTimes],
+                unitStepTimes: currentBatchStepTimes.map(t => batchUnits > 0 ? (t / batchUnits) : 0),
+                stepNames: steps.map(s => s.name),
+                totalBatchSeconds: totalBatchSec,
+                avgSecPerUnit: avgSecPerUnit,
+                bottleneck: maxStepName,
+                issues: [...currentBatchIssues],
+                timestamp: `${dateStr} ${timestamp}`
+            };
+
+            historyData.unshift(batchRecord);
+            saveState();
+
+            playCompletionSound();
+            speakCompletionAnnouncement();
+            showToast(`¡Lote completado! Total: ${formatSecondsShort(totalBatchSec)}`, "success");
+
+            batchCountNum++;
+            currentStepIndex = 0;
+            stepElapsedTime = 0;
+            batchElapsedTime = 0;
+            currentBatchStepTimes = new Array(steps.length).fill(0);
+            currentBatchIssues = [];
+
+            stepTimerDisplay.textContent = "00:00.0";
+            bottleTimerDisplay.textContent = "00:00.0";
+            liveUnitStepAvg.textContent = "0.0 s/frasco";
+            fsStepTimerDisplay.textContent = "00:00.0";
+            fsLiveUnitStepAvg.textContent = "0.0 s/frasco";
+
+            updateStepUI();
+            updateTimerStateUI();
+            renderHistoryTable();
+            updateMetricsAndBatch();
+        }
+
+        function speakCompletionAnnouncement() {
+            if (!ttsEnabled || !('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance("¡Lote completado con éxito!");
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {}
+        }
+
+        function resetCurrentStep() {
+            if (stepElapsedTime === 0) return;
+            stepElapsedTime = 0;
+            stepStartTime = Date.now();
+            stepTimerDisplay.textContent = "00:00.0";
+            fsStepTimerDisplay.textContent = "00:00.0";
+            liveUnitStepAvg.textContent = "0.0 s/frasco";
+            showToast("Paso reiniciado", "info");
+        }
+
+        function cancelCurrentBatch() {
+            showConfirmationModal(
+                "Descartar Lote",
+                `¿Desea descartar el lote "${batchName}"?`,
+                "fa-trash-can",
+                () => {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    isPaused = false;
+                    stepState = 'idle';
+                    stepElapsedTime = 0;
+                    batchElapsedTime = 0;
+                    currentStepIndex = 0;
+                    currentBatchStepTimes = new Array(steps.length).fill(0);
+                    currentBatchIssues = [];
+
+                    stepTimerDisplay.textContent = "00:00.0";
+                    bottleTimerDisplay.textContent = "00:00.0";
+                    liveUnitStepAvg.textContent = "0.0 s/frasco";
+                    fsStepTimerDisplay.textContent = "00:00.0";
+                    fsLiveUnitStepAvg.textContent = "0.0 s/frasco";
+
+                    updateStepUI();
+                    updateTimerStateUI();
+                    updateMetricsAndBatch();
+                    showToast("Lote descartado", "warning");
+                }
+            );
+        }
+
+        function openIssueModal() {
+            if (steps.length === 0) return;
+            const stName = steps[currentStepIndex]?.name || `Paso ${currentStepIndex + 1}`;
+            issueStepLabel.textContent = `Paso ${currentStepIndex + 1}: ${stName}`;
+            issueTextInput.value = "";
+            issueModal.classList.remove('hidden');
+        }
+
+        function closeIssueModal() {
+            issueModal.classList.add('hidden');
+        }
+
+        function setQuickIssue(text) {
+            issueTextInput.value = text;
+        }
+
+        function saveIssue() {
+            const text = issueTextInput.value.trim();
+            if (!text) {
+                showToast("Ingresa una descripción del incidente.", "warning");
+                return;
+            }
+
+            const issueObj = {
+                stepIndex: currentStepIndex + 1,
+                stepName: steps[currentStepIndex]?.name || `Paso ${currentStepIndex + 1}`,
+                text: text,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timeMs: stepElapsedTime
+            };
+
+            currentBatchIssues.push(issueObj);
+            updateMetricsAndBatch();
+            closeIssueModal();
+            showToast(`Incidencia guardada: "${text}"`, "warning");
+
+            if (isRunning) pauseTimer();
+        }
+
+        // Reconocimiento de Voz ("Activo" al encender)
+        function setupVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                voiceToggleBtn.title = "Voz no soportada";
+                voiceText.textContent = "Sin Voz";
+                voiceIcon.className = "fa-solid fa-microphone-slash text-slate-500";
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'es-ES';
+
+            recognition.onstart = () => {
+                voiceActive = true;
+                voiceDot.className = "w-2 h-2 rounded-full bg-emerald-500 pulse-subtle";
+                voiceIcon.className = "fa-solid fa-microphone text-emerald-400";
+                voiceText.textContent = "Activo"; // Muestra "Activo" cuando está encendido
+                showToast("Micrófono activado", "info");
+            };
+
+            recognition.onend = () => {
+                if (voiceActive) {
+                    try { recognition.start(); } catch(e) {}
+                } else {
+                    voiceDot.className = "w-2 h-2 rounded-full bg-slate-500";
+                    voiceIcon.className = "fa-solid fa-microphone-slash text-slate-400";
+                    voiceText.textContent = "Voz";
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const lastResultIndex = event.results.length - 1;
+                const transcript = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
+                handleVoiceCommand(transcript);
+            };
+
+            voiceToggleBtn.addEventListener('click', toggleVoice);
+        }
+
+        function toggleVoice() {
+            if (!recognition) return;
+            if (voiceActive) {
+                voiceActive = false;
+                recognition.stop();
+                showToast("Micrófono desactivado", "info");
+            } else {
+                voiceActive = true;
+                try { recognition.start(); } catch(e) {}
+            }
+        }
+
+        function handleVoiceCommand(cmd) {
+            const isStart = /iniciar|comenzar|empieza/i.test(cmd);
+            const isComplete = /ya (está|esta)|termin[eé]|siguiente|completar/i.test(cmd);
+            const isPause = /pausa|pausar/i.test(cmd);
+            const isResume = /reanudar|continuar/i.test(cmd);
+            const isIssue = /inconveniente|problema|falla/i.test(cmd);
+
+            if (isStart && stepState === 'idle') {
+                showToast(`🎙️ Voz: Iniciando`, "success");
+                handleMainButtonClick();
+            } else if (isComplete && stepState !== 'idle') {
+                showToast(`🎙️ Voz: Paso completado`, "success");
+                handleMainButtonClick();
+            } else if (isPause && isRunning) {
+                pauseTimer();
+            } else if (isResume && isPaused) {
+                resumeTimer();
+            } else if (isIssue) {
+                openIssueModal();
+            }
+        }
+
+        function updateMetricsAndBatch() {
+            metricBatchUnits.textContent = batchUnits;
+            metricIssuesCount.textContent = currentBatchIssues.length;
+
+            if (historyData.length === 0 && !isRunning && batchElapsedTime === 0) {
+                metricTotalBatchTime.textContent = "00:00";
+                metricAvgPerUnit.textContent = "0.0s";
+                metricBottleneck.textContent = "Sin fallas";
+                return;
+            }
+
+            if (currentBatchIssues.length > 0) {
+                metricBottleneck.textContent = `Falla: ${currentBatchIssues[currentBatchIssues.length - 1].text}`;
+            } else if (historyData.length > 0) {
+                metricBottleneck.textContent = `Cuello: ${historyData[0].bottleneck}`;
+            }
+        }
+
+        // Editor de Etapas (Inputs de tamaño reducido)
+        function renderStepsEditor() {
+            const stepsEditorList = document.getElementById('stepsEditorList');
+            stepsEditorList.innerHTML = '';
+
+            steps.forEach((step, idx) => {
+                const stepCard = document.createElement('div');
+                stepCard.className = "bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2";
+                stepCard.innerHTML = `
+                    <div class="flex items-start gap-2 w-full sm:w-auto flex-1">
+                        <span class="w-5 h-5 rounded bg-slate-900 text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                            ${idx + 1}
+                        </span>
+                        <div class="space-y-1 w-full">
+                            <input type="text" value="${escapeHtml(step.name)}" onchange="updateStepDetail(${idx}, 'name', this.value)" class="w-full bg-white border border-slate-300 rounded px-2 py-0.5 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500">
+                            <input type="text" value="${escapeHtml(step.instruction || '')}" onchange="updateStepDetail(${idx}, 'instruction', this.value)" placeholder="Instrucción corta..." class="w-full bg-white border border-slate-300 rounded px-2 py-0.5 text-[11px] text-slate-600">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1 self-end sm:self-center shrink-0">
+                        <button onclick="moveStep(${idx}, -1)" ${idx === 0 ? 'disabled class="opacity-30 p-1 text-slate-400"' : 'class="p-1 bg-white border border-slate-200 text-slate-600 rounded text-xs"'} title="Arriba">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button onclick="moveStep(${idx}, 1)" ${idx === steps.length - 1 ? 'disabled class="opacity-30 p-1 text-slate-400"' : 'class="p-1 bg-white border border-slate-200 text-slate-600 rounded text-xs"'} title="Abajo">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button onclick="deleteStep(${idx})" class="p-1 bg-white border border-slate-200 text-rose-600 rounded text-xs" title="Borrar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                stepsEditorList.appendChild(stepCard);
+            });
+        }
+
+        function updateStepDetail(index, field, value) {
+            if (steps[index]) {
+                steps[index][field] = value.trim();
+                saveState();
+                updateStepUI();
+                renderHistoryTable();
+            }
+        }
+
+        function moveStep(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= steps.length) return;
+            const temp = steps[index];
+            steps[index] = steps[newIndex];
+            steps[newIndex] = temp;
+            saveState();
+            renderStepsEditor();
+            updateStepUI();
+        }
+
+        function deleteStep(index) {
+            if (steps.length <= 1) {
+                showToast("Debe existir al menos 1 paso.", "warning");
+                return;
+            }
+            steps.splice(index, 1);
+            if (currentStepIndex >= steps.length) {
+                currentStepIndex = steps.length - 1;
+            }
+            currentBatchStepTimes = new Array(steps.length).fill(0);
+            saveState();
+            renderStepsEditor();
+            updateStepUI();
+            renderHistoryTable();
+        }
+
+        function addNewStep() {
+            const newId = steps.length + 1;
+            steps.push({
+                id: newId,
+                name: `Etapa ${newId}`,
+                instruction: "Instrucciones..."
+            });
+            currentBatchStepTimes = new Array(steps.length).fill(0);
+            saveState();
+            renderStepsEditor();
+            updateStepUI();
+            renderHistoryTable();
+        }
+
+        function resetDefaultSteps() {
+            showConfirmationModal(
+                "Restablecer",
+                "¿Restablecer las 5 etapas originales?",
+                "fa-rotate-left",
+                () => {
+                    steps = JSON.parse(JSON.stringify(DEFAULT_STEPS));
+                    currentStepIndex = 0;
+                    currentBatchStepTimes = new Array(steps.length).fill(0);
+                    saveState();
+                    renderStepsEditor();
+                    updateStepUI();
+                    renderHistoryTable();
+                }
+            );
+        }
+
+        // Renderizado de la Tabla de Historial
+        function renderHistoryTable() {
+            historyTableHeader.innerHTML = '';
+            const trHead = document.createElement('tr');
+            
+            let thsHtml = `
+                <th scope="col" class="py-2 px-1.5">Lote</th>
+                <th scope="col" class="py-2 px-1.5">Cant</th>
+            `;
+            steps.forEach((st, idx) => {
+                thsHtml += `<th scope="col" class="py-2 px-1.5">${idx + 1}. ${escapeHtml(st.name)}</th>`;
+            });
+            thsHtml += `
+                <th scope="col" class="py-2 px-1.5 text-emerald-800">Total</th>
+                <th scope="col" class="py-2 px-1.5 text-indigo-800">Prom.</th>
+                <th scope="col" class="py-2 px-1.5">Fallas</th>
+                <th scope="col" class="py-2 px-1.5">Acción</th>
+            `;
+            trHead.innerHTML = thsHtml;
+            historyTableHeader.appendChild(trHead);
+
+            historyTableBody.innerHTML = '';
+            if (historyData.length === 0) {
+                emptyTableMsg.classList.remove('hidden');
+                return;
+            }
+            emptyTableMsg.classList.add('hidden');
+
+            historyData.forEach((item) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 border-b border-slate-100";
+
+                let stepsCellsHtml = '';
+                item.stepTimes.forEach((tTotal, i) => {
+                    const tUnit = item.unitStepTimes[i] || 0;
+                    stepsCellsHtml += `
+                        <td class="py-2 px-1.5">
+                            <div class="font-bold text-slate-800">${tTotal.toFixed(1)}s</div>
+                            <div class="text-[9px] text-indigo-600 font-sans">${tUnit.toFixed(1)}s/u</div>
+                        </td>
+                    `;
+                });
+
+                const diff = steps.length - item.stepTimes.length;
+                for (let i = 0; i < diff; i++) {
+                    stepsCellsHtml += `<td class="py-2 px-1.5 text-slate-300">--</td>`;
+                }
+
+                const issuesCount = item.issues ? item.issues.length : 0;
+
+                tr.innerHTML = `
+                    <td class="py-2 px-1.5 font-bold text-slate-900 font-sans">
+                        <div>#${item.batchNum} - ${escapeHtml(item.batchName)}</div>
+                    </td>
+                    <td class="py-2 px-1.5 font-bold text-slate-700">${item.units} u.</td>
+                    ${stepsCellsHtml}
+                    <td class="py-2 px-1.5 text-emerald-800 font-bold">${formatSecondsShort(item.totalBatchSeconds)}</td>
+                    <td class="py-2 px-1.5 text-indigo-800 font-bold">${item.avgSecPerUnit.toFixed(1)} s/u</td>
+                    <td class="py-2 px-1.5 font-sans ${issuesCount > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'}">${issuesCount}</td>
+                    <td class="py-2 px-1.5 text-center font-sans">
+                        <button onclick="deleteHistoryRow(${item.id})" class="text-slate-400 hover:text-rose-600 p-1">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                historyTableBody.appendChild(tr);
+            });
+        }
+
+        function deleteHistoryRow(id) {
+            historyData = historyData.filter(item => item.id !== id);
+            saveState();
+            renderHistoryTable();
+            updateMetricsAndBatch();
+        }
+
+        function clearAllHistory() {
+            if (historyData.length === 0) return;
+            showConfirmationModal(
+                "Borrar Historial",
+                "¿Eliminar todos los lotes guardados?",
+                "fa-eraser",
+                () => {
+                    historyData = [];
+                    batchCountNum = 1;
+                    saveState();
+                    renderHistoryTable();
+                    updateMetricsAndBatch();
+                }
+            );
+        }
+
+        function exportToExcel() {
+            if (historyData.length === 0) return;
+
+            try {
+                const dynamicHeaders = [];
+                steps.forEach((s, i) => {
+                    dynamicHeaders.push(`Paso ${i + 1}: ${s.name} Total (s)`);
+                    dynamicHeaders.push(`Paso ${i + 1}: ${s.name} Unitario (s/u)`);
+                });
+
+                const headers = ["N° Lote", "Nombre Lote", "Frascos", ...dynamicHeaders, "Total Lote (s)", "Promedio (s/u)", "Cuello", "Incidencias", "Fecha"];
+
+                const rows = historyData.map(item => {
+                    const stepValues = [];
+                    item.stepTimes.forEach((tTotal, i) => {
+                        stepValues.push(tTotal.toFixed(1));
+                        stepValues.push((item.unitStepTimes[i] || 0).toFixed(1));
+                    });
+                    const issuesStr = item.issues ? item.issues.map(iss => `[Paso ${iss.stepIndex}] ${iss.text}`).join('; ') : '';
+
+                    return [item.batchNum, item.batchName, item.units, ...stepValues, item.totalBatchSeconds.toFixed(1), item.avgSecPerUnit.toFixed(1), item.bottleneck, issuesStr || "Ninguna", item.timestamp];
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Control_Lotes");
+                XLSX.writeFile(wb, `ChronosPack_Reporte_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                showToast("Excel descargado", "success");
+            } catch (err) {
+                exportToCSV();
+            }
+        }
+
+        function exportToCSV() {
+            if (historyData.length === 0) return;
+            let csvContent = "data:text/csv;charset=utf-8,";
+            const dynamicHeaders = steps.map((s, i) => `Paso${i + 1}_Total_s,Paso${i + 1}_Unitario_s`).join(",");
+            csvContent += `LoteNum,NombreLote,Frascos,${dynamicHeaders},Total_Lote_s,Promedio_Unidad_s,Incidencias,FechaHora\n`;
+
+            historyData.forEach(item => {
+                const stepVals = item.stepTimes.map((tTotal, i) => `${tTotal.toFixed(1)},${(item.unitStepTimes[i] || 0).toFixed(1)}`).join(",");
+                const issuesStr = item.issues ? item.issues.map(iss => `[Paso ${iss.stepIndex}] ${iss.text}`).join('; ') : '';
+                const row = [item.batchNum, `"${item.batchName.replace(/"/g, '""')}"`, item.units, stepVals, item.totalBatchSeconds.toFixed(1), item.avgSecPerUnit.toFixed(1), `"${issuesStr.replace(/"/g, '""')}"`, `"${item.timestamp}"`].join(",");
+                csvContent += row + "\n";
+            });
+
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `ChronosPack_Lotes_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("CSV descargado", "success");
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, duration, type = 'sine') {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function playStepChimeSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime;
+                [1046.50, 1567.98].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + (idx * 0.04));
+                    gain.gain.setValueAtTime(0.15, now + (idx * 0.04));
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + (idx * 0.04) + 0.5);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + (idx * 0.04));
+                    osc.stop(now + (idx * 0.04) + 0.5);
+                });
+            } catch (e) {}
+        }
+
+        function playCompletionSound() {
+            if (!soundEnabled) return;
+            setTimeout(() => playTone(523.25, 0.1, 'sine'), 0);
+            setTimeout(() => playTone(659.25, 0.1, 'sine'), 100);
+            setTimeout(() => playTone(783.99, 0.25, 'sine'), 200);
+        }
+
+        function openFullscreen() {
+            fullscreenOverlay.classList.remove('hidden');
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        }
+
+        function closeFullscreen() {
+            fullscreenOverlay.classList.add('hidden');
+            if (document.fullscreenElement && document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+
+        function setupTabNavigation() {
+            const tabBtnControl = document.getElementById('tabBtnControl');
+            const tabBtnSteps = document.getElementById('tabBtnSteps');
+            const tabBtnHistory = document.getElementById('tabBtnHistory');
+
+            const tabContentControl = document.getElementById('tabContentControl');
+            const tabContentSteps = document.getElementById('tabContentSteps');
+            const tabContentHistory = document.getElementById('tabContentHistory');
+
+            function activateTab(activeBtn, activeContent) {
+                [tabBtnControl, tabBtnSteps, tabBtnHistory].forEach(btn => {
+                    btn.classList.remove('border-emerald-600', 'text-emerald-800');
+                    btn.classList.add('border-transparent', 'text-slate-500');
+                });
+                [tabContentControl, tabContentSteps, tabContentHistory].forEach(content => {
+                    content.classList.add('hidden');
+                });
+
+                activeBtn.classList.remove('border-transparent', 'text-slate-500');
+                activeBtn.classList.add('border-emerald-600', 'text-emerald-800');
+                activeContent.classList.remove('hidden');
+            }
+
+            tabBtnControl.addEventListener('click', () => activateTab(tabBtnControl, tabContentControl));
+            tabBtnSteps.addEventListener('click', () => activateTab(tabBtnSteps, tabContentSteps));
+            tabBtnHistory.addEventListener('click', () => activateTab(tabBtnHistory, tabContentHistory));
+        }
+
+        function showConfirmationModal(title, message, iconClass, onConfirm) {
+            const customModal = document.getElementById('customModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modalIcon').className = `fa-solid ${iconClass} text-lg`;
+
+            customModal.classList.remove('hidden');
+
+            const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+            const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+            const handleConfirm = () => {
+                onConfirm();
+                closeModal();
+            };
+
+            const closeModal = () => {
+                customModal.classList.add('hidden');
+                modalConfirmBtn.removeEventListener('click', handleConfirm);
+                modalCancelBtn.removeEventListener('click', closeModal);
+            };
+
+            modalConfirmBtn.addEventListener('click', handleConfirm);
+            modalCancelBtn.addEventListener('click', closeModal);
+        }
+
+        function showToast(message, type = "info") {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgClass = "bg-white border-slate-200 text-slate-800 shadow-md";
+            let icon = "fa-circle-info text-indigo-600";
+
+            if (type === "success") {
+                bgClass = "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-md";
+                icon = "fa-circle-check text-emerald-600";
+            } else if (type === "warning") {
+                bgClass = "bg-amber-50 border-amber-200 text-amber-900 shadow-md";
+                icon = "fa-triangle-exclamation text-amber-600";
+            }
+
+            toast.className = `flex items-center gap-2 px-3 py-2 rounded-lg border ${bgClass} text-xs font-semibold transition-all duration-200 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-xs"></i><span>${escapeHtml(message)}</span>`;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function setupEventListeners() {
+            completeStepBtn.addEventListener('click', handleMainButtonClick);
+            mobileCompleteStepBtn.addEventListener('click', handleMainButtonClick);
+            fsCompleteStepBtn.addEventListener('click', handleMainButtonClick);
+
+            pauseBtn.addEventListener('click', () => { initAudio(); togglePause(); });
+            mobilePauseBtn.addEventListener('click', () => { initAudio(); togglePause(); });
+            fsPauseBtn.addEventListener('click', () => { initAudio(); togglePause(); });
+
+            reportIssueBtn.addEventListener('click', openIssueModal);
+            mobileReportIssueBtn.addEventListener('click', openIssueModal);
+            fsReportIssueBtn.addEventListener('click', openIssueModal);
+            document.getElementById('closeIssueModalBtn').addEventListener('click', closeIssueModal);
+            document.getElementById('cancelIssueBtn').addEventListener('click', closeIssueModal);
+            document.getElementById('saveIssueBtn').addEventListener('click', saveIssue);
+
+            resetStepBtn.addEventListener('click', () => { initAudio(); resetCurrentStep(); });
+            mobileResetStepBtn.addEventListener('click', () => { initAudio(); resetCurrentStep(); });
+            fsResetBtn.addEventListener('click', () => { initAudio(); resetCurrentStep(); });
+
+            cancelBottleBtn.addEventListener('click', () => { initAudio(); cancelCurrentBatch(); });
+            mobileCancelBottleBtn.addEventListener('click', () => { initAudio(); cancelCurrentBatch(); });
+
+            const handleNameChange = (val) => {
+                batchName = val.trim() || "Lote Perfume";
+                saveState();
+                syncBatchInputsUI();
+            };
+
+            const handleUnitsChange = (val) => {
+                const u = parseInt(val, 10);
+                if (!isNaN(u) && u > 0) {
+                    batchUnits = u;
+                    saveState();
+                    syncBatchInputsUI();
+                    updateStepUI();
+                    updateMetricsAndBatch();
+                }
+            };
+
+            batchNameInputMobile.addEventListener('change', (e) => handleNameChange(e.target.value));
+            batchUnitsInputMobile.addEventListener('change', (e) => handleUnitsChange(e.target.value));
+
+            document.getElementById('addNewStepBtn').addEventListener('click', addNewStep);
+            document.getElementById('resetDefaultStepsBtn').addEventListener('click', resetDefaultSteps);
+
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV);
+            document.getElementById('clearHistoryBtn').addEventListener('click', clearAllHistory);
+
+            document.getElementById('openFullscreenBtn').addEventListener('click', openFullscreen);
+            document.getElementById('closeFullscreenBtn').addEventListener('click', closeFullscreen);
+
+            audioToggleBtn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                ttsEnabled = soundEnabled;
+                
+                if (soundEnabled) {
+                    audioIcon.className = "fa-solid fa-volume-high text-emerald-400 text-xs";
+                    audioText.textContent = "Pasos";
+                    showToast("Sonido activado", "info");
+                    initAudio();
+                    playTone(600, 0.1);
+                } else {
+                    audioIcon.className = "fa-solid fa-volume-xmark text-slate-500 text-xs";
+                    audioText.textContent = "Mute";
+                    showToast("Sonido desactivado", "info");
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+                if (e.code === 'Space' || e.code === 'Enter') {
+                    e.preventDefault();
+                    handleMainButtonClick();
+                } else if (e.code === 'KeyP') {
+                    e.preventDefault();
+                    initAudio();
+                    togglePause();
+                } else if (e.code === 'Escape' && !fullscreenOverlay.classList.contains('hidden')) {
+                    closeFullscreen();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
