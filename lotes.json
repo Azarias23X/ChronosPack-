@@ -1,37 +1,5 @@
 [
   {
-    "id": 1794336482191,
-    "batchNum": 2,
-    "batchName": "Lote Perfume California 60ml",
-    "units": 8,
-    "stepTimes": [
-      1.851,
-      1.728,
-      0.817,
-      0.717,
-      1.06
-    ],
-    "unitStepTimes": [
-      0.231375,
-      0.216,
-      0.102125,
-      0.089625,
-      0.1325
-    ],
-    "stepNames": [
-      "Comprobar frascos",
-      "Llenar con concentrado aromático",
-      "Llenar con alcohol de perfumería",
-      "Inspección visual (turbidez/residuos)",
-      "Colocar y ajustar válvula"
-    ],
-    "totalBatchSeconds": 6.173,
-    "avgSecPerUnit": 0.771625,
-    "bottleneck": "Comprobar frascos",
-    "issues": [],
-    "timestamp": "10/11/2026 03:48 p.m."
-  },
-  {
     "id": 1794335980967,
     "batchNum": 1,
     "batchName": "Lote Perfume Narciss Morphosis 60ml",
