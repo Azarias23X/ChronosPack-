@@ -1,5 +1,45 @@
 [
   {
+    "id": 1794347272016,
+    "batchNum": 2,
+    "batchName": "Lote Perfume Luque 60ml",
+    "units": 5,
+    "stepTimes": [
+      64.951,
+      107.688,
+      103.163,
+      88.917,
+      137.633
+    ],
+    "unitStepTimes": [
+      12.990199999999998,
+      21.5376,
+      20.6326,
+      17.7834,
+      27.526600000000002
+    ],
+    "stepNames": [
+      "Comprobar frascos",
+      "Llenar con concentrado aromático",
+      "Llenar con alcohol de perfumería",
+      "Inspección visual (turbidez/residuos)",
+      "Colocar y ajustar válvula"
+    ],
+    "totalBatchSeconds": 502.3520000000001,
+    "avgSecPerUnit": 100.47040000000001,
+    "bottleneck": "Colocar y ajustar válvula",
+    "issues": [
+      {
+        "stepIndex": 4,
+        "stepName": "Inspección visual (turbidez/residuos)",
+        "text": "Residuos",
+        "timestamp": "06:45 p.m.",
+        "timeMs": 82566
+      }
+    ],
+    "timestamp": "10/11/2026 06:47 p.m."
+  },
+  {
     "id": 1794335980967,
     "batchNum": 1,
     "batchName": "Lote Perfume Narciss Morphosis 60ml",
