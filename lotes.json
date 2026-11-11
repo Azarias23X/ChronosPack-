@@ -1,37 +1,5 @@
 [
   {
-    "id": 1794364189496,
-    "batchNum": 3,
-    "batchName": "Lote Perfume Narciss Morphosis 60ml",
-    "units": 5,
-    "stepTimes": [
-      59.001,
-      11.592,
-      2.682,
-      0.764,
-      1.608
-    ],
-    "unitStepTimes": [
-      11.8002,
-      2.3184,
-      0.5364,
-      0.1528,
-      0.3216
-    ],
-    "stepNames": [
-      "Comprobar frascos",
-      "Llenar con concentrado aromático",
-      "Llenar con alcohol de perfumería",
-      "Inspección visual (turbidez/residuos)",
-      "Colocar y ajustar válvula"
-    ],
-    "totalBatchSeconds": 75.647,
-    "avgSecPerUnit": 15.1294,
-    "bottleneck": "Comprobar frascos",
-    "issues": [],
-    "timestamp": "10/11/2026 11:29 p.m."
-  },
-  {
     "id": 1794347272016,
     "batchNum": 2,
     "batchName": "Lote Perfume Luque 60ml",
