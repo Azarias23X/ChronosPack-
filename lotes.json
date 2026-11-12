@@ -1,5 +1,37 @@
 [
   {
+    "id": 1794454531968,
+    "batchNum": 3,
+    "batchName": "Lote Perfume Pink Remix 60ml",
+    "units": 3,
+    "stepTimes": [
+      40.002,
+      122.355,
+      62.261,
+      37.239,
+      248.74
+    ],
+    "unitStepTimes": [
+      13.334000000000001,
+      40.785000000000004,
+      20.753666666666668,
+      12.412999999999998,
+      82.91333333333334
+    ],
+    "stepNames": [
+      "Comprobar frascos",
+      "Llenar con concentrado aromático",
+      "Llenar con alcohol de perfumería",
+      "Inspección visual (turbidez/residuos)",
+      "Colocar y ajustar válvula"
+    ],
+    "totalBatchSeconds": 510.597,
+    "avgSecPerUnit": 170.19899999999998,
+    "bottleneck": "Colocar y ajustar válvula",
+    "issues": [],
+    "timestamp": "12/11/2026 12:35 a.m."
+  },
+  {
     "id": 1794453885814,
     "batchNum": 2,
     "batchName": "Lote Perfume Indómita 60ml",
