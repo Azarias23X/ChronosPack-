@@ -1,5 +1,52 @@
 [
   {
+    "id": 1794453885814,
+    "batchNum": 2,
+    "batchName": "Lote Perfume Indómita 60ml",
+    "units": 3,
+    "stepTimes": [
+      142.301,
+      191.244,
+      192.521,
+      8.77,
+      131.817
+    ],
+    "unitStepTimes": [
+      47.43366666666666,
+      63.748,
+      64.17366666666666,
+      2.9233333333333333,
+      43.939
+    ],
+    "stepNames": [
+      "Comprobar frascos",
+      "Llenar con concentrado aromático",
+      "Llenar con alcohol de perfumería",
+      "Inspección visual (turbidez/residuos)",
+      "Colocar y ajustar válvula"
+    ],
+    "totalBatchSeconds": 666.6529999999999,
+    "avgSecPerUnit": 222.21766666666664,
+    "bottleneck": "Llenar con alcohol de perfumería",
+    "issues": [
+      {
+        "stepIndex": 2,
+        "stepName": "Llenar con concentrado aromático",
+        "text": "Derrame de líquido",
+        "timestamp": "12:12 a.m.",
+        "timeMs": 101443
+      },
+      {
+        "stepIndex": 3,
+        "stepName": "Llenar con alcohol de perfumería",
+        "text": "Falta de insumo",
+        "timestamp": "12:22 a.m.",
+        "timeMs": 189971
+      }
+    ],
+    "timestamp": "12/11/2026 12:24 a.m."
+  },
+  {
     "id": 1794347272016,
     "batchNum": 2,
     "batchName": "Lote Perfume Luque 60ml",
