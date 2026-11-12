@@ -1,5 +1,37 @@
 [
   {
+    "id": 1794525856582,
+    "batchNum": 5,
+    "batchName": "Lote Perfume California 60ml",
+    "units": 3,
+    "stepTimes": [
+      70.051,
+      285.526,
+      72.293,
+      12.256,
+      400.999
+    ],
+    "unitStepTimes": [
+      23.350333333333335,
+      95.17533333333334,
+      24.09766666666667,
+      4.085333333333334,
+      133.66633333333334
+    ],
+    "stepNames": [
+      "Comprobar frascos",
+      "Llenar con concentrado aromático",
+      "Llenar con alcohol de perfumería",
+      "Inspección visual (turbidez/residuos)",
+      "Colocar y ajustar válvula"
+    ],
+    "totalBatchSeconds": 841.125,
+    "avgSecPerUnit": 280.375,
+    "bottleneck": "Colocar y ajustar válvula",
+    "issues": [],
+    "timestamp": "12/11/2026 08:24 p.m."
+  },
+  {
     "id": 1794506860339,
     "batchNum": 4,
     "batchName": "Lote Perfume BARON 60ml",
