@@ -1,5 +1,37 @@
 [
   {
+    "id": 1794506860339,
+    "batchNum": 4,
+    "batchName": "Lote Perfume BARON 60ml",
+    "units": 2,
+    "stepTimes": [
+      15.55,
+      55.577,
+      41.078,
+      12.514,
+      113.517
+    ],
+    "unitStepTimes": [
+      7.775,
+      27.7885,
+      20.539,
+      6.257,
+      56.7585
+    ],
+    "stepNames": [
+      "Comprobar frascos",
+      "Llenar con concentrado aromático",
+      "Llenar con alcohol de perfumería",
+      "Inspección visual (turbidez/residuos)",
+      "Colocar y ajustar válvula"
+    ],
+    "totalBatchSeconds": 238.236,
+    "avgSecPerUnit": 119.118,
+    "bottleneck": "Colocar y ajustar válvula",
+    "issues": [],
+    "timestamp": "12/11/2026 03:07 p.m."
+  },
+  {
     "id": 1794454531968,
     "batchNum": 3,
     "batchName": "Lote Perfume Pink Remix 60ml",
